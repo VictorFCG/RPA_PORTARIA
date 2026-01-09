@@ -110,9 +110,7 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha):
             usuario)
         time.sleep(1)
         WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "sbmAcessar"))).click()
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//img[@title='Fechar janela (ESC)']"))
-        ).click()
+       
         WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, "//img[@title='Pesquisa Rápida']"))
         ).click()
@@ -156,7 +154,6 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha):
 
             z = 0
             for td_element in td_elements:
-                z += 1
                 if z % 30 == 0:
                     save(results, nome)
                 try:
@@ -341,6 +338,7 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha):
                     save(results, nome)
                     j += 1
                     print("Error processing link:", e)
+                z += 1 #incremento movido
         except Exception as e:
 
             save(results, nome)
