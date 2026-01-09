@@ -117,7 +117,7 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha):
         today_date = datetime.today().strftime('%d/%m/%Y')
         start_date = dataInicio
         end_date = dataFinal
-        tipo_processo = "100000556"
+        tipo_processo = "100000556" #Geral: Comissão ou grupo de trabalho
 
         select_element = Select(driver.find_element(By.ID, "selSeriePesquisa"))
         select_element.select_by_value(numero)
@@ -417,7 +417,7 @@ def executar(entry_start_date, entry_final_date, entry_password, entry_user, opt
     # Start the task in a separate thread
     if numer == "GABIR":
         threading.Thread(target=exec, args=(10, "GABIR", start_date, final_date, usuario, senha), daemon=True).start()
-    if numer == "GADIR":
+    if numer.upper().startswith("GADIR"):
         threading.Thread(target=exec, args=(290, "GADIR", start_date, final_date, usuario, senha), daemon=True).start()
 
 def fechar(root):
