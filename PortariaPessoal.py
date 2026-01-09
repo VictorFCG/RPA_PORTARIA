@@ -117,9 +117,13 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha):
         today_date = datetime.today().strftime('%d/%m/%Y')
         start_date = dataInicio
         end_date = dataFinal
+        tipo_processo = "100000556"
 
         select_element = Select(driver.find_element(By.ID, "selSeriePesquisa"))
         select_element.select_by_value(numero)
+
+        select_element = Select(driver.find_element(By.ID, "selTipoProcedimentoPesquisa"))
+        select_element.select_by_value(tipo_processo)#Futuramente dar opção para escolher o tipo de processo
 
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "txtDataInicio"))
