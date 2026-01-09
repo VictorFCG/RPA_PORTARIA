@@ -9,6 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import TimeoutException
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.support.ui import Select
@@ -27,6 +28,55 @@ import re
 import os
 import requests
 import pdfplumber
+
+def select_unidade(driver, unidade, attempts=3):
+    for attempt in range(1, attempts + 1):
+        try:
+            input_unidade = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "txtUnidade"))
+            )
+            input_unidade.clear()
+            input_unidade.send_keys(unidade)
+
+            # aguardar aparecer a lista de sugestões (ajuste o XPATH conforme o autocomplete usado)
+            suggestion_xpath = "//ul[contains(@class,'ui-autocomplete')]/li"
+            try:
+                WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, suggestion_xpath))
+                )
+                suggestions = driver.find_elements(By.XPATH, suggestion_xpath)
+                # tenta clicar na sugestão que contenha o texto da unidade
+                for s in suggestions:
+                    if unidade.lower() in s.text.lower():
+                        s.click()
+                        break
+                else:
+                    # fallback: selecionar primeiro item
+                    suggestions[0].click()
+            except TimeoutException:
+                # fallback: tentar com arrow + enter
+                input_unidade.send_keys(Keys.ARROW_DOWN, Keys.ENTER)
+
+            # validar que o campo agora contém a unidade esperada (pegar atributo 'value')
+            WebDriverWait(driver, 5).until(
+                lambda d: unidade.lower() in input_unidade.get_attribute("value").lower()
+            )
+            return True
+        except Exception as e:
+            # log e retry
+            print(f"select_unidade tentativa {attempt} falhou: {e}")
+            if attempt == attempts:
+                # grava arquivo de erro e encerra rotina sem matar processo
+                current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                error_message = str(e) + "\n" + traceback.format_exc()
+                file_name = f"erro_{current_time}.txt"
+                with open(file_name, "w") as file:
+                    file.write(error_message)
+                try:
+                    driver.quit()
+                except:
+                    pass
+                return False
 
 
 def save(results, arquivo):
@@ -82,7 +132,7 @@ def transform_url(url):
 def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
     nome = (
         "Portarias_"
-        + nome
+        + unidade
         + "_"
         + dataInicio.replace("/", "").replace("\\", "")
         + "_"
@@ -151,27 +201,11 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
         )  # Futuramente dar opção para escolher o tipo de processo
 
         if unidade != "GABIR":
-            try:
-                input_unidade = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.ID, "txtUnidade"))
-                )
-                
-                input_unidade.clear()
-                input_unidade.send_keys(unidade)                
-                time.sleep(1)                
-                input_unidade.send_keys(Keys.ARROW_DOWN)
-                time.sleep(0.3)
-                input_unidade.send_keys(Keys.ENTER)                
-                time.sleep(0.5)
-            
-            except Exception as e:
-                current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                error_message = str(e) + "\n" + traceback.format_exc()
-                file_name = f"erro_{current_time}.txt"
-                with open(file_name, "w") as file:
-                    file.write(error_message)
-                print(f"Error saved to {file_name}")
-                exit(1)
+            ok = select_unidade(driver, unidade)
+            if not ok:
+                # tratar: log/continuar sem buscar ou abortar somente esta execução
+                print(f"Falha ao selecionar unidade '{unidade}'. Abortando busca para esta unidade.")
+                return
 
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "txtDataInicio"))
