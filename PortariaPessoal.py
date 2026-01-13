@@ -213,10 +213,8 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                     numero = "N/A"
 
                     try:
-                        # Se o botão de "ir ao topo" estiver presente, oculta-o (solução direta e simples)
                         driver.execute_script("var e = document.getElementById('btnInfraTopo'); if(e) e.style.display='none';")
-                        time.sleep(0.05)
-                        # tentativa normal
+                        time.sleep(0.1)
                         link.click()
                     except Exception:
                                 # se tudo falhar, apenas logue e pule
@@ -308,12 +306,20 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                         ):
                             retificada = "Sim"
                         print(data)
-                        print(4)
-                        paragrafo = re.search(
-                            r"R E S O L V E(.*?)PUBLIQUE-SE E REGISTRE-SE",
-                            driver.find_element(By.TAG_NAME, "body").text,
-                            re.DOTALL,
-                        ).group(1)
+                        print(document)
+                        
+                        body_text = driver.find_element(By.TAG_NAME, "body").text
+                        match = re.search(
+                            r"R\s*E\s*S\s*O\s*L\s*V\s*E(.*?)(PUBLIQUE-?SE\s*E\s*REGISTRE-?SE|PUBLIQUE-?SE|PUBLIQUE)",
+                            body_text,
+                            flags=re.IGNORECASE | re.DOTALL,
+                            )
+                        if match:
+                            paragrafo = match.group(1)
+                        else:
+                            print("Aviso: padrão 'R E S O L V E ... PUBLIQUE-SE' não encontrado, salvando conteúdo bruto")
+                            paragrafo = "N/A" 
+                        
                         # print(re.search(r"R E S O L V E(.+?)PUBLIQUE-SE E REGISTRE-SE", driver.find_element(By.TAG_NAME, "body").text).group(1))
                         print(driver.current_url)
                         substituicoes = {
@@ -433,11 +439,37 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                             Servidor = "N/A"
                         print(Servidor)
                         print(6)
-                    except:
-                        driver.close()
-                        driver.switch_to.window(original_window)
+                    except Exception as e:
+                        print("Erro ao processar documento:", e)
+                        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        # salvar snapshot para investigação
+                        try:
+                            driver.save_screenshot(f"error_{ts}.png")
+                            with open(f"page_{ts}.html", "w", encoding="utf-8") as f:
+                                f.write(driver.page_source)
+                        except Exception as ex:
+                            print("Falha ao salvar snapshot:", ex)
+
+                        # Fechar apenas se estivermos numa janela diferente da original
+                        try:
+                            if driver.current_window_handle != original_window:
+                                driver.close()
+                                driver.switch_to.window(original_window)
+                            else:
+                                # se estivermos na mesma aba, tente voltar para a lista
+                                try:
+                                    driver.back()
+                                    WebDriverWait(driver, 5).until(
+                                        EC.presence_of_element_located((By.CLASS_NAME, "pesquisaTituloDireita"))
+                                    )
+                                except Exception:
+                                    pass
+                        except Exception as ex:
+                            print("Aviso cleanup janela:", ex)
+                        save(results, nome)
                         continue
 
+                    
                     results.append(
                         {
                             "Tipo_Processo": detalhes,
