@@ -42,7 +42,7 @@ def save(results, arquivo):
                 "No_Documento",
                 "Data_BSE",
                 "No_Portaria",
-                "Servidor",
+                "Envolvidos",
                 "Descricao_Portaria",
                 "Data_DOU",
                 "Republicacao",
@@ -83,6 +83,23 @@ def transform_url(url):
     return transformed_url
 
 
+'''def process_single_result_modal(driver, substituicoes, unidade):
+    #implementar caso do modal de resultado único
+
+    return {
+        "Tipo_Processo": "N/A",
+        "No_Processo": numero,
+        "No_Documento": "N/A",
+        "Data_BSE": boletimData,
+        "No_Portaria": Portaria,
+        "Envolvidos": Servidor_val,
+        "Descricao_Portaria": paragrafoCompleto,
+        "Data_DOU": dou,
+        "Republicacao": retificada,
+        "Lotacao": unidade,
+    }'''
+
+
 def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
     nome = (
         "Portarias_"
@@ -93,6 +110,41 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
         + dataFinal.replace("/", "").replace("\\", "")
         + ".csv"
     )
+    substituicoes = {
+                            "Matrícula": "matrícula",
+                            "Matricula": "matricula",
+                            "SERVIDOR": "matrícula",
+                            "Servidor": "matrícula",
+                            "servidor": "matrícula",
+                            "Servidora": "matrícula",
+                            "servidora": "matrícula",
+                            "Habilitada": "matrícula",
+                            "Habilitado": "matrícula",
+                            "habilitada": "matrícula",
+                            "habilitado": "matrícula",
+                            "Ocupante": "ocupante",
+                            "ocupante do cargo efetivo": "matrícula",
+                            "habilitado": "matrícula",
+                            "ocupante": "matrícula",
+                            " RA ": "matricula",
+                            " matrícula": ", matrícula",
+                            ",,": ",",
+                            "Assistente": "matrícula",
+                            "Professor": "matrícula",
+                            "Professora": "matrícula",
+                            "professor": "matrícula",
+                            "professora": "matrícula",
+                            "assistente": "matrícula",
+                            "SIAPE": "matrícula",
+                            "siape": "matrícula",
+                            "Siape": "matrícula",
+                            "Nome do Servidor": "matrícula",
+                            "Campus de Lotação": "matrícula",
+                            "DESIGNAÇÃO": "matrícula",
+                            "DE LOTACAO": "",
+                            "SEI SICITE": "",
+                        }
+    
     numero = str(numer)
     PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chromedriver.exe")
     service = Service(PATH)
@@ -139,7 +191,6 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
         WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, "//img[@title='Pesquisa Rápida']"))
         ).click()
-        today_date = datetime.today().strftime("%d/%m/%Y")
         start_date = dataInicio
         end_date = dataFinal
         tipo_processo = "100000556"  # Geral: Comissão ou grupo de trabalho
@@ -197,6 +248,14 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
             td_elements = driver.find_elements(By.CLASS_NAME, "pesquisaTituloDireita")
             td_titulos = driver.find_elements(By.CLASS_NAME, "pesquisaTituloEsquerda")
 
+            '''# If there's no list elements (single-result modal), try to process modal content directly
+            if not td_elements:
+                entry = process_single_result_modal(driver, substituicoes, unidade)
+                if entry:
+                    results.append(entry)
+                    save(results, nome)
+                    break'''
+
             z = 0
             for td_element in td_elements:
                 if z % 30 == 0:
@@ -239,7 +298,9 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                         texto_completo = driver.find_element(
                             By.XPATH, "//table[@border='0']"
                         ).text
-                        print(2)
+                        print("Texto Completo:")
+                        print(texto_completo)
+                        print("Data do Boletim:")
                         try:
                             boletimData = (
                                 match.group(0)
@@ -257,7 +318,7 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                             print(boletimData)
                         except:
                             boletimData = "N/A"
-                        print(3)
+                            print(boletimData)
                         try:
                             Portaria = "Nº" + re.search(
                                 r"Portaria de Pessoal (.+?), de", driver.page_source
@@ -266,8 +327,8 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                             Portaria = "".join(filter(str.isdigit, Portaria))
                         except:
                             Portaria = "N/A"
-                        print(Portaria)
-                        print(33)
+                        print("Portaria:")
+                        print(Portaria)                        
                         try:
                             data = re.search(
                                 r", de (.+?)</strong>", driver.page_source
@@ -284,6 +345,7 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                                 dou = "N/A"
                         except:
                             dou = "N/A"
+                        print("Data DOU:")
 
                         element = driver.find_element(
                             By.XPATH, "//td[contains(., 'Referência: Processo nº')]"
@@ -320,70 +382,10 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                             print("Aviso: padrão 'R E S O L V E ... PUBLIQUE-SE' não encontrado, salvando conteúdo bruto")
                             paragrafo = "N/A" 
                         
-                        # print(re.search(r"R E S O L V E(.+?)PUBLIQUE-SE E REGISTRE-SE", driver.find_element(By.TAG_NAME, "body").text).group(1))
                         print(driver.current_url)
-                        substituicoes = {
-                            "Matrícula": "matrícula",
-                            "Matricula": "matricula",
-                            "SERVIDOR": "matrícula",
-                            "Servidor": "matrícula",
-                            "servidor": "matrícula",
-                            "Servidora": "matrícula",
-                            "servidora": "matrícula",
-                            "Habilitada": "matrícula",
-                            "Habilitado": "matrícula",
-                            "habilitada": "matrícula",
-                            "habilitado": "matrícula",
-                            "Ocupante": "ocupante",
-                            "ocupante do cargo efetivo": "matrícula",
-                            "habilitado": "matrícula",
-                            "ocupante": "matrícula",
-                            " RA ": "matricula",
-                            " matrícula": ", matrícula",
-                            ",,": ",",
-                            "Assistente": "matrícula",
-                            "Professor": "matrícula",
-                            "Professora": "matrícula",
-                            "professor": "matrícula",
-                            "professora": "matrícula",
-                            "assistente": "matrícula",
-                            "SIAPE": "matrícula",
-                            "siape": "matrícula",
-                            "Siape": "matrícula",
-                            "Nome do Servidor": "matrícula",
-                            "Campus de Lotação": "matrícula",
-                            "DESIGNAÇÃO": "matrícula",
-                            "DE LOTACAO": "",
-                            "SEI SICITE": "",
-                        }
 
-                        substituicoesServe = {
-                            "NOME": "",
-                            "SIAPE": "",
-                            "CAMPUS": "",
-                            "DESIGNACAO": "",
-                            ", ,": ",",
-                            "DE LOTACAO": "",
-                        }
 
                         paragrafoCompleto = paragrafo
-
-                        if "Nome do Servidor" in paragrafo:
-                            start = paragrafo.find("Nome do Servidor") + len(
-                                "Nome do Servidor"
-                            )
-                            end_match = re.search(r"\n ", paragrafo[start:])
-
-                            # If the line break followed by space exists, proceed with uppercase transformation
-                            if end_match:
-                                end = start + end_match.start()
-                                # Convert the text in the range to uppercase
-                                paragrafo = (
-                                    paragrafo[:start]
-                                    + paragrafo[start:end].upper()
-                                    + paragrafo[end:]
-                                )
-                                paragrafo = re.sub(r"(\d{7})", r"\n\1", paragrafo)
 
                         # Função para substituir as palavras
                         pattern = re.compile(
@@ -400,45 +402,33 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                             .replace("\n", ", ")
                         )
 
-                        paragrafo = re.sub(
-                            r"\b\d{7}\b", "matricula", paragrafo
-                        ).replace(", ,", ",")
-                        Servidor = ", ".join(
-                            re.findall(
-                                r"([A-Z\s]{10,})(?=,\s*matr(?:icula)?\s*|\s*\d+)",
-                                (paragrafo),
-                            )
-                        )
+                        # Substitui sequências de 7 dígitos em 'paragrafo' para manter compatibilidade
+                        paragrafo = re.sub(r"(?<!\d)\d{7,8}(?!\d)", "matricula", paragrafo).replace(", ,", ",")
 
-                        pattern = re.compile(
-                            "|".join(map(re.escape, substituicoesServe.keys()))
-                        )
-                        Servidor = unidecode(
-                            pattern.sub(
-                                lambda match: substituicoesServe[match.group(0)],
-                                Servidor,
-                            )
-                        ).strip()
+                        # Extrai as sequências de 7 dígitos do parágrafo original capturado
+                        matriculas = re.findall(r"(?<!\d)\d{7,8}(?!\d)", paragrafoCompleto)
+                        if matriculas:
+                            # Preserva ordem e remove duplicatas
+                            seen = set()
+                            uniq = []
+                            for m in matriculas:
+                                if m not in seen:
+                                    seen.add(m)
+                                    uniq.append(m)
+                            Servidor = ", ".join(uniq)
+                        else:
+                            Servidor = "N/A"
+
                         if Servidor.startswith(","):
                             Servidor = Servidor[1:]
                         print(paragrafo)
-                        print(9)
+                        print("Servidor:")
                         print(Servidor)
-                        print(9)
-                        print(5)
                         try:
-                            conteudo = paragrafoCompleto
+                            # Trim leading/trailing whitespace and blank lines
+                            conteudo = paragrafoCompleto.strip()
                         except:
                             conteudo = "N/A"
-                        S = (
-                            ", " + ", ".join(re.findall(r"“([A-Z\s]+)”", conteudo))
-                        ).strip(", ")
-                        if len(S) > 6:
-                            Servidor += S
-                        if len(Servidor) < 5:
-                            Servidor = "N/A"
-                        print(Servidor)
-                        print(6)
                     except Exception as e:
                         print("Erro ao processar documento:", e)
                         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -477,7 +467,7 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                             "No_Documento": document,
                             "Data_BSE": boletimData,
                             "No_Portaria": Portaria,
-                            "Servidor": Servidor,
+                            "Envolvidos": Servidor,
                             "Descricao_Portaria": conteudo,
                             "Data_DOU": dou,
                             "Republicacao": retificada,
@@ -572,12 +562,6 @@ def executar(
         )
         return
 
-    # Validate the filename
-    # if not filename.endswith(".csv"):
-    #    messagebox.showwarning("Arquivo Inválido", "O nome do arquivo deve terminar com '.csv'.")
-    #     return
-
-    # Start the task in a separate thread
     if numer == "GABIR":
         threading.Thread(
             target=exec,
@@ -787,23 +771,3 @@ def interface():
 
 
 interface()
-
-
-"""
-thread1 = threading.Thread(target=exec, args=("10", "GABIR.csv")) #GABIR
-thread2 = threading.Thread(target=exec, args=("290", "GADIR.csv"))
-thread3 = threading.Thread(target=exec, args=("1119", "GABIRnormativa.csv"))
-thread4 = threading.Thread(target=exec, args=("1136", "GADIRnormativa.csv"))
-thread1.start()
-time.sleep(4)
-thread2.start()
-time.sleep(4)
-thread3.start()
-time.sleep(4)
-thread4.start()
-
-
-thread1.join()
-thread2.join()
-thread3.join()
-thread4.join()"""
