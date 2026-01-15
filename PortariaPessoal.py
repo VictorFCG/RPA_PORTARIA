@@ -49,7 +49,7 @@ def save(results, arquivo):
                 "Lotacao",
             ],
             quotechar='"',
-            quoting=csv.QUOTE_ALL,  # Aqui garantimos que todos os campos sejam cercados por aspas
+            quoting=csv.QUOTE_ALL, 
         )
         writer.writeheader()
         for result in results:
@@ -58,23 +58,16 @@ def save(results, arquivo):
 
 # Specify the path to your chromedriver
 def transform_url(url):
-    # Parse the URL
     parsed_url = urlparse(url)
-
-    # Extract query parameters
     query_params = parse_qs(parsed_url.query)
-
-    # Keep only the desired parameters
     desired_params = {
         "acao": "procedimento_trabalhar",
         "id_procedimento": query_params.get("id_procedimento", [None])[0],
         "id_documento": query_params.get("id_documento", [None])[0],
     }
 
-    # Remove any None values (in case keys are missing)
     desired_params = {k: v for k, v in desired_params.items() if v is not None}
 
-    # Reconstruct the URL
     new_query = urlencode(desired_params, doseq=True)
     transformed_url = urlunparse(
         (parsed_url.scheme, parsed_url.netloc, parsed_url.path, "", new_query, "")
@@ -110,7 +103,6 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
     chrome_options.add_argument("--ignore-certificate-errors")
     chrome_options.add_argument("--disable-popup-blocking")
     prefs = {
-        # "plugins.always_open_pdf_externally": True,
         "download.default_directory": download_dir,
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
@@ -235,11 +227,11 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                         continue
                     time.sleep(0.3)
                     try:
-                        print(1)
+                        print("Texto:")
                         texto_completo = driver.find_element(
                             By.XPATH, "//table[@border='0']"
                         ).text
-                        print(2)
+                        print("Data do Boletim:")
                         try:
                             boletimData = (
                                 match.group(0)
@@ -257,7 +249,8 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                             print(boletimData)
                         except:
                             boletimData = "N/A"
-                        print(3)
+                            print(boletimData)
+                        print("Num portaria:")
                         try:
                             Portaria = "Nº" + re.search(
                                 r"Portaria de Pessoal (.+?), de", driver.page_source
@@ -267,7 +260,7 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                         except:
                             Portaria = "N/A"
                         print(Portaria)
-                        print(33)
+                        print("Data da portaria:")
                         try:
                             data = re.search(
                                 r", de (.+?)</strong>", driver.page_source
@@ -289,10 +282,8 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                             By.XPATH, "//td[contains(., 'Referência: Processo nº')]"
                         )
 
-                        # Extract the text content of the element
                         text = element.text
 
-                        # Use a regular expression to extract the process number
                         pattern = r"Processo nº ([0-9./-]+)"
                         match = re.search(pattern, text)
 
@@ -306,6 +297,7 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                         ):
                             retificada = "Sim"
                         print(data)
+                        print("Num documento:")
                         print(document)
                         
                         body_text = driver.find_element(By.TAG_NAME, "body").text
@@ -320,7 +312,6 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                             print("Aviso: padrão 'R E S O L V E ... PUBLIQUE-SE' não encontrado, salvando conteúdo bruto")
                             paragrafo = "N/A" 
                         
-                        # print(re.search(r"R E S O L V E(.+?)PUBLIQUE-SE E REGISTRE-SE", driver.find_element(By.TAG_NAME, "body").text).group(1))
                         print(driver.current_url)
                         substituicoes = {
                             "Matrícula": "matrícula",
@@ -421,11 +412,11 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                         ).strip()
                         if Servidor.startswith(","):
                             Servidor = Servidor[1:]
+                        print("Paragrafo:")
                         print(paragrafo)
-                        print(9)
+                        print("Servidor antes:")
                         print(Servidor)
-                        print(9)
-                        print(5)
+                        print("Servidor depois:")
                         try:
                             conteudo = paragrafoCompleto
                         except:
@@ -438,7 +429,6 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                         if len(Servidor) < 5:
                             Servidor = "N/A"
                         print(Servidor)
-                        print(6)
                     except Exception as e:
                         print("Erro ao processar documento:", e)
                         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -493,7 +483,7 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                     save(results, nome)
                     j += 1
                     print("Error processing link:", e)
-                z += 1  # incremento movido
+                z += 1 
         except Exception as e:
 
             save(results, nome)
@@ -525,40 +515,26 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
 
 
 def is_valid_date(date_text):
-    # Regular expression to match strictly DD/MM/YYYY format
     pattern = r"^\d{2}/\d{2}/\d{4}$"
     if not re.match(pattern, date_text):
         return False
 
     try:
-        # Check if the date is valid
         datetime.strptime(date_text, "%d/%m/%Y")
         return True
     except ValueError:
         return False
 
 
-def long_running_task(numer, filename, start_date, final_date, usuario, senha):
-    # Simulate a long-running task (replace with your Selenium task)
-    import time
-
-    time.sleep(5)  # Simulating a 5-second task
-    print(
-        f"Task {numer} completed with {filename}, {start_date}, {final_date}, {usuario}, {senha}"
-    )
-
-
 def executar(
     entry_start_date, entry_final_date, entry_password, entry_user, option_var
 ):
-    # Retrieve inputs from the fields
     start_date = entry_start_date.get()
     final_date = entry_final_date.get()
     senha = entry_password.get()
     usuario = entry_user.get()
     numer = option_var.get()
 
-    # Validate the dates
     if not is_valid_date(start_date):
         messagebox.showwarning(
             "Data Inválida",
@@ -572,12 +548,6 @@ def executar(
         )
         return
 
-    # Validate the filename
-    # if not filename.endswith(".csv"):
-    #    messagebox.showwarning("Arquivo Inválido", "O nome do arquivo deve terminar com '.csv'.")
-    #     return
-
-    # Start the task in a separate thread
     if numer == "GABIR":
         threading.Thread(
             target=exec,
@@ -593,7 +563,6 @@ def executar(
 
 
 def fechar(root):
-    # Close the application
     root.destroy()
     sys.exit()
 
@@ -789,21 +758,3 @@ def interface():
 interface()
 
 
-"""
-thread1 = threading.Thread(target=exec, args=("10", "GABIR.csv")) #GABIR
-thread2 = threading.Thread(target=exec, args=("290", "GADIR.csv"))
-thread3 = threading.Thread(target=exec, args=("1119", "GABIRnormativa.csv"))
-thread4 = threading.Thread(target=exec, args=("1136", "GADIRnormativa.csv"))
-thread1.start()
-time.sleep(4)
-thread2.start()
-time.sleep(4)
-thread3.start()
-time.sleep(4)
-thread4.start()
-
-
-thread1.join()
-thread2.join()
-thread3.join()
-thread4.join()"""
