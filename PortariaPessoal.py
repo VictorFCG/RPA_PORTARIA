@@ -29,6 +29,67 @@ import os
 import requests
 import pdfplumber
 
+def modal_handle(driver, results, nome, unidade):
+    #faltantes - inicialização temporária
+    detalhes = numero = boletimData = Portaria = Servidor = dou = retificada = "N/A"
+    
+    # 1. Aguarda o iframe carregar e o localiza
+    iframe = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.NAME, "modal-frame"))
+    )
+    driver.switch_to.frame(iframe)
+
+    #num documento
+    texto_tabela = driver.find_element(By.XPATH, "/html/body/table").text
+    padrao_sei = r"(?<=SEI nº\s)\d+"
+    resultado = re.search(padrao_sei, texto_tabela)
+    if resultado:
+        document = resultado.group(0)
+        print(f"Documento: {document}")
+    else:
+        print("Num do documento não encontrado.")
+        document = "N/A"
+
+    body_text = driver.find_element(By.TAG_NAME, "body").text
+    match = re.search(
+        r"R\s*E\s*S\s*O\s*L\s*V\s*E(.*?)(PUBLIQUE-?SE\s*E\s*REGISTRE-?SE|PUBLIQUE-?SE|PUBLIQUE)",
+        body_text,
+        flags=re.IGNORECASE | re.DOTALL,
+        )
+    if match:
+        paragrafo = limpar_texto(match.group(1))
+    else:
+        print("Aviso: padrão 'R E S O L V E ... PUBLIQUE-SE' não encontrado, salvando conteúdo bruto")
+        paragrafo = "N/A" 
+
+    print(paragrafo)
+
+    Servidor = extrair_servidores(paragrafo)
+    print("Servidor(es):", Servidor)
+
+    driver.switch_to.default_content()
+
+    # 1. Localiza o elemento select pelo XPath fornecido
+    elemento_select = driver.find_element(By.XPATH, "/html/body/div[1]/div/div[2]/form/div[13]/div[2]/select")
+    # 2. Cria um objeto Select para interagir com o dropdown
+    detalhes = Select(elemento_select).first_selected_option.text
+    print(f"Detalhes: {detalhes}")
+
+    results.append(
+        {
+            "Tipo_Processo": detalhes,
+            "No_Processo": numero,
+            "No_Documento": document,
+            "Data_BSE": boletimData,
+            "No_Portaria": Portaria,
+            "Servidor": Servidor,
+            "Descricao_Portaria": paragrafo,
+            "Data_DOU": dou,
+            "Republicacao": retificada,
+            "Lotacao": unidade,
+        })
+    save(results, nome)
+
 def limpar_texto(texto: str) -> str:
     if not texto:
         return ""
@@ -214,6 +275,9 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
 
             td_elements = driver.find_elements(By.CLASS_NAME, "pesquisaTituloDireita")
             td_titulos = driver.find_elements(By.CLASS_NAME, "pesquisaTituloEsquerda")
+            if not td_elements:
+                modal_handle(driver, results, nome, unidade)
+                break
 
             z = 0
             for td_element in td_elements:
