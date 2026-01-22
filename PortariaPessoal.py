@@ -29,8 +29,115 @@ import os
 import requests
 import pdfplumber
 
+def limpar_texto(texto: str) -> str:
+    if not texto:
+        return ""
 
+    texto = re.sub(r"^[^0-9A-Za-zÀ-ÿ]+", "", texto)
+    texto = texto.replace("\xa0", " ")
+    texto = texto.strip()
+    texto = re.sub(r"[ \t]+", " ", texto)
+    texto = re.sub(r"\n{2,}", "\n", texto)
 
+    return texto
+
+def extrair_servidores(conteudo: str) -> str:
+    # 1. Busca sequências de 7 a 8 dígitos que NÃO tenham dígitos antes ou depois
+    # (?<!\d)  -> Lookbehind negativo: garante que não há um dígito antes
+    # \d{7,8}  -> Corresponde a exatamente 7 ou 8 dígitos
+    # (?!\d)   -> Lookahead negativo: garante que não há um dígito depois
+    padrao = r"(?<!\d)\d{7,8}(?!\d)"
+    
+    # 2. Encontra todas as ocorrências no texto
+    matches = re.findall(padrao, conteudo)
+    
+    # 3. Remove duplicatas usando set() e mantém uma ordem (opcional)
+    # Se a ordem de aparição for importante, usamos dict.fromkeys()
+    sequencias_unicas = list(dict.fromkeys(matches))
+    
+    # 4. Retorna as sequências unidas por vírgula e espaço
+    return ", ".join(sequencias_unicas)
+
+    # Lista de termos que NÃO devem aparecer em nomes válidos
+    termos_invalidos = {
+        # Administração superior
+        "MINISTRO", "MINISTRA", "SECRETÁRIO", "SECRETÁRIA",
+        "PRESIDENTE", "VICE-PRESIDENTE",
+        "REITOR", "REITORA", "VICE-REITOR", "VICE-REITORA",
+        "PRÓ-REITOR", "PRÓ-REITORA", "PRO-REITOR", "PRO-REITORA",
+        "SUPERINTENDENTE", "SUPERINTENDENTA",
+
+        # Gestão acadêmica
+        "DIRETOR", "DIRETORA", "VICE-DIRETOR", "VICE-DIRETORA",
+        "COORDENADOR", "COORDENADORA",
+        "CHEFE", "SUBCHEFE",
+        "GERENTE",
+
+        # Docência
+        "PROFESSOR", "PROFESSORA",
+        "DOCENTE",
+        "TITULAR", "ADJUNTO", "ADJUNTA",
+        "ASSOCIADO", "ASSOCIADA",
+        "AUXILIAR",
+        "SUBSTITUTO", "SUBSTITUTA",
+
+        # Discentes
+        "ALUNO", "ALUNA",
+        "DISCENTE",
+        "ESTUDANTE",
+        "BOLSISTA",
+        "MONITOR", "MONITORA",
+        "RESIDENTE",
+
+        # Técnico-administrativos
+        "SERVIDOR", "SERVIDORA",
+        "TÉCNICO", "TÉCNICA",
+        "ANALISTA",
+        "ASSISTENTE",
+        "AUXILIAR ADMINISTRATIVO",
+        "SECRETÁRIO EXECUTIVO", "SECRETÁRIA EXECUTIVA",
+
+        # Jurídico / administrativo transversal
+        "PROCURADOR", "PROCURADORA",
+        "ASSESSOR", "ASSESSORA",
+        "CONSULTOR", "CONSULTORA",
+        "AUDITOR", "AUDITORA",
+
+        # Titulações acadêmicas (muito importantes ignorar)
+        "DOUTOR", "DOUTORA",
+        "MESTRE",
+        "DOUTORANDO", "DOUTORANDA",
+        "MESTRANDO", "MESTRANDA",
+        "PÓS-DOUTORANDO", "PÓS-DOUTORANDA",
+        "PESQUISADOR", "PESQUISADORA"
+    }
+
+    doc = nlp(texto)
+
+    nomes_validos = []
+
+    for ent in doc.ents:
+        if ent.label_ != "PER":
+            continue
+
+        nome = ent.text.strip()
+
+        nome = re.sub(r"^[^\wÀ-ÿ]+|[^\wÀ-ÿ]+$", "", nome)
+
+        nome_upper = nome.upper()
+
+        palavras = nome_upper.split()
+        if len(palavras) < 2:
+            continue
+
+        if any(p in termos_invalidos for p in palavras):
+            continue
+
+        nomes_validos.append(nome_upper)
+
+    nomes_unicos = list(dict.fromkeys(nomes_validos))
+
+    return ", ".join(nomes_unicos)
 
 def save(results, arquivo):
     with open(arquivo, mode="w", newline="", encoding="utf-8") as file:
@@ -307,128 +414,19 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                             flags=re.IGNORECASE | re.DOTALL,
                             )
                         if match:
-                            paragrafo = match.group(1)
+                            paragrafo = limpar_texto(match.group(1))
                         else:
                             print("Aviso: padrão 'R E S O L V E ... PUBLIQUE-SE' não encontrado, salvando conteúdo bruto")
                             paragrafo = "N/A" 
                         
                         print(driver.current_url)
-                        substituicoes = {
-                            "Matrícula": "matrícula",
-                            "Matricula": "matricula",
-                            "SERVIDOR": "matrícula",
-                            "Servidor": "matrícula",
-                            "servidor": "matrícula",
-                            "Servidora": "matrícula",
-                            "servidora": "matrícula",
-                            "Habilitada": "matrícula",
-                            "Habilitado": "matrícula",
-                            "habilitada": "matrícula",
-                            "habilitado": "matrícula",
-                            "Ocupante": "ocupante",
-                            "ocupante do cargo efetivo": "matrícula",
-                            "habilitado": "matrícula",
-                            "ocupante": "matrícula",
-                            " RA ": "matricula",
-                            " matrícula": ", matrícula",
-                            ",,": ",",
-                            "Assistente": "matrícula",
-                            "Professor": "matrícula",
-                            "Professora": "matrícula",
-                            "professor": "matrícula",
-                            "professora": "matrícula",
-                            "assistente": "matrícula",
-                            "SIAPE": "matrícula",
-                            "siape": "matrícula",
-                            "Siape": "matrícula",
-                            "Nome do Servidor": "matrícula",
-                            "Campus de Lotação": "matrícula",
-                            "DESIGNAÇÃO": "matrícula",
-                            "DE LOTACAO": "",
-                            "SEI SICITE": "",
-                        }
 
-                        substituicoesServe = {
-                            "NOME": "",
-                            "SIAPE": "",
-                            "CAMPUS": "",
-                            "DESIGNACAO": "",
-                            ", ,": ",",
-                            "DE LOTACAO": "",
-                        }
+                        conteudo = paragrafo
 
-                        paragrafoCompleto = paragrafo
-
-                        if "Nome do Servidor" in paragrafo:
-                            start = paragrafo.find("Nome do Servidor") + len(
-                                "Nome do Servidor"
-                            )
-                            end_match = re.search(r"\n ", paragrafo[start:])
-
-                            # If the line break followed by space exists, proceed with uppercase transformation
-                            if end_match:
-                                end = start + end_match.start()
-                                # Convert the text in the range to uppercase
-                                paragrafo = (
-                                    paragrafo[:start]
-                                    + paragrafo[start:end].upper()
-                                    + paragrafo[end:]
-                                )
-                                paragrafo = re.sub(r"(\d{7})", r"\n\1", paragrafo)
-
-                        # Função para substituir as palavras
-                        pattern = re.compile(
-                            "|".join(map(re.escape, substituicoes.keys()))
-                        )
-                        paragrafo = (
-                            unidecode(
-                                pattern.sub(
-                                    lambda match: substituicoes[match.group(0)],
-                                    paragrafo,
-                                )
-                            )
-                            .replace(",,", ",")
-                            .replace("\n", ", ")
-                        )
-
-                        paragrafo = re.sub(
-                            r"\b\d{7}\b", "matricula", paragrafo
-                        ).replace(", ,", ",")
-                        Servidor = ", ".join(
-                            re.findall(
-                                r"([A-Z\s]{10,})(?=,\s*matr(?:icula)?\s*|\s*\d+)",
-                                (paragrafo),
-                            )
-                        )
-
-                        pattern = re.compile(
-                            "|".join(map(re.escape, substituicoesServe.keys()))
-                        )
-                        Servidor = unidecode(
-                            pattern.sub(
-                                lambda match: substituicoesServe[match.group(0)],
-                                Servidor,
-                            )
-                        ).strip()
-                        if Servidor.startswith(","):
-                            Servidor = Servidor[1:]
-                        print("Paragrafo:")
-                        print(paragrafo)
-                        print("Servidor antes:")
-                        print(Servidor)
-                        print("Servidor depois:")
-                        try:
-                            conteudo = paragrafoCompleto
-                        except:
-                            conteudo = "N/A"
-                        S = (
-                            ", " + ", ".join(re.findall(r"“([A-Z\s]+)”", conteudo))
-                        ).strip(", ")
-                        if len(S) > 6:
-                            Servidor += S
-                        if len(Servidor) < 5:
-                            Servidor = "N/A"
-                        print(Servidor)
+                        '''testar aqui'''
+                        Servidor = extrair_servidores(conteudo)
+                        print("Servidor(es):", Servidor)
+                        
                     except Exception as e:
                         print("Erro ao processar documento:", e)
                         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
