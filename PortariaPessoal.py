@@ -1,6 +1,5 @@
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
-from bs4 import BeautifulSoup
 from PIL import Image, ImageTk
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -9,11 +8,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import TimeoutException
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.support.ui import Select
-from unidecode import unidecode
 import tkinter as tk
 from tkinter import messagebox
 from datetime import datetime
@@ -26,8 +23,6 @@ import csv
 import time
 import re
 import os
-import requests
-import pdfplumber
 
 def modal_handle(driver, results, nome, unidade):
     #faltantes - inicialização temporária
@@ -148,15 +143,15 @@ def modal_handle(driver, results, nome, unidade):
 
     results.append(
         {
-            "Tipo_Processo": detalhes, #feito
+            "Tipo_Processo": detalhes, 
             "No_Processo": numero,
-            "No_Documento": document, #feito
-            "Data_BSE": boletimData, #feito
-            "No_Portaria": Portaria, #testar
-            "Servidor": Servidor, #feito
-            "Descricao_Portaria": paragrafo,#feito
-            "Data_DOU": dou, #testar
-            "Republicacao": retificada, #testar
+            "No_Documento": document, 
+            "Data_BSE": boletimData, 
+            "No_Portaria": Portaria, 
+            "Servidor": Servidor, 
+            "Descricao_Portaria": paragrafo,
+            "Data_DOU": dou, 
+            "Republicacao": retificada, 
             "Lotacao": unidade,
             "Revoga": revoga,
         })
