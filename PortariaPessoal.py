@@ -39,6 +39,50 @@ def modal_handle(driver, results, nome, unidade):
     )
     driver.switch_to.frame(iframe)
 
+    #data boletim
+    try:
+        boletimData = (
+            match.group(0)
+            if (
+                match := re.search(
+                    r"\d{2}/\d{2}/\d{4}",
+                    driver.find_element(
+                        By.XPATH,
+                        "//div[contains(text(), 'Boletim de Serviço Eletrônico')]",
+                    ).text,
+                )
+            )
+            else "Data não encontrada"
+        )
+        print(boletimData)
+    except:
+        boletimData = "N/A"
+    print(f"Data do Boletim: {boletimData}")
+    
+    #num portaria
+    try:
+        Portaria = "Nº" + re.search(
+            r"Portaria de Pessoal (.+?), de", driver.page_source
+        ).group(1).replace("</strong><strong>", "")
+        Portaria = re.sub(r"<.*?>|\[.*?\]", "", Portaria)
+        Portaria = "".join(filter(str.isdigit, Portaria))
+    except:
+        Portaria = "N/A"
+    print(f"Portaria: {Portaria}")
+    
+    #DOU
+    dou = ""
+    try:
+        pattern = r"DOU de (\d{2}/\d{2}/\d{4}), se"
+        match = re.search(pattern, driver.page_source)
+        if match:
+            dou = match.group(1)
+        else:
+            dou = "N/A"
+    except:
+        dou = "N/A"
+    print(f"Data do DOU: {dou}")
+
     #num documento
     texto_tabela = driver.find_element(By.XPATH, "/html/body/table").text
     padrao_sei = r"(?<=SEI nº\s)\d+"
@@ -50,6 +94,30 @@ def modal_handle(driver, results, nome, unidade):
         print("Num do documento não encontrado.")
         document = "N/A"
 
+    #num portaria
+    element = driver.find_element(
+        By.XPATH, "//td[contains(., 'Referência: Processo nº')]"
+    )
+
+    text = element.text
+
+    pattern = r"Processo nº ([0-9./-]+)"
+    match = re.search(pattern, text)
+
+    if match:
+        numero = match.group(1)
+    print(f"Número do Processo: {numero}")
+
+    #retificada
+    retificada = "Nao"
+    if (
+        "ntRodape_item" in driver.page_source
+        and "retificada" in driver.page_source
+    ):
+        retificada = "Sim"
+    print(f"Retificada: {retificada}")
+
+    #texto - resumo
     body_text = driver.find_element(By.TAG_NAME, "body").text
     match = re.search(
         r"R\s*E\s*S\s*O\s*L\s*V\s*E(.*?)(PUBLIQUE-?SE\s*E\s*REGISTRE-?SE|PUBLIQUE-?SE|PUBLIQUE)",
@@ -69,6 +137,7 @@ def modal_handle(driver, results, nome, unidade):
 
     driver.switch_to.default_content()
 
+    #detalhes - tipo de processo
     # 1. Localiza o elemento select pelo XPath fornecido
     elemento_select = driver.find_element(By.XPATH, "/html/body/div[1]/div/div[2]/form/div[13]/div[2]/select")
     # 2. Cria um objeto Select para interagir com o dropdown
@@ -77,15 +146,15 @@ def modal_handle(driver, results, nome, unidade):
 
     results.append(
         {
-            "Tipo_Processo": detalhes,
+            "Tipo_Processo": detalhes, #feito
             "No_Processo": numero,
-            "No_Documento": document,
-            "Data_BSE": boletimData,
-            "No_Portaria": Portaria,
-            "Servidor": Servidor,
-            "Descricao_Portaria": paragrafo,
-            "Data_DOU": dou,
-            "Republicacao": retificada,
+            "No_Documento": document, #feito
+            "Data_BSE": boletimData, #feito
+            "No_Portaria": Portaria, #testar
+            "Servidor": Servidor, #feito
+            "Descricao_Portaria": paragrafo,#feito
+            "Data_DOU": dou, #testar
+            "Republicacao": retificada, #testar
             "Lotacao": unidade,
         })
     save(results, nome)
@@ -94,11 +163,16 @@ def limpar_texto(texto: str) -> str:
     if not texto:
         return ""
 
-    texto = re.sub(r"^[^0-9A-Za-zÀ-ÿ]+", "", texto)
+    # 1. Normalização de caracteres
     texto = texto.replace("\xa0", " ")
-    texto = texto.strip()
+    # 2. Normalização de espaços e tabs
     texto = re.sub(r"[ \t]+", " ", texto)
+    # 3. Normalização de quebras de linha
     texto = re.sub(r"\n{2,}", "\n", texto)
+    # 4. Remoção de lixo no início
+    texto = re.sub(r"^[^0-9A-Za-zÀ-ÿ]+", "", texto)
+    # 5. Limpeza final
+    texto = texto.strip()
 
     return texto
 
@@ -406,7 +480,6 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
 
                         conteudo = paragrafo
 
-                        '''testar aqui'''
                         Servidor = extrair_servidores(conteudo)
                         print("Servidor(es):", Servidor)
                         
