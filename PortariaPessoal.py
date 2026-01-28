@@ -132,6 +132,8 @@ def modal_handle(driver, results, nome, unidade):
 
     print(paragrafo)
 
+    revoga = "Sim" if re.search(r"\brevoga", paragrafo, flags=re.IGNORECASE) else "Não"
+
     Servidor = extrair_servidores(paragrafo)
     print("Servidor(es):", Servidor)
 
@@ -156,6 +158,7 @@ def modal_handle(driver, results, nome, unidade):
             "Data_DOU": dou, #testar
             "Republicacao": retificada, #testar
             "Lotacao": unidade,
+            "Revoga": revoga,
         })
     save(results, nome)
 
@@ -208,6 +211,7 @@ def save(results, arquivo):
                 "Data_DOU",
                 "Republicacao",
                 "Lotacao",
+                "Revoga",
             ],
             quotechar='"',
             quoting=csv.QUOTE_ALL, 
@@ -480,6 +484,8 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
 
                         conteudo = paragrafo
 
+                        revoga = "Sim" if re.search(r"\brevoga", paragrafo, flags=re.IGNORECASE) else "Não"
+
                         Servidor = extrair_servidores(conteudo)
                         print("Servidor(es):", Servidor)
                         
@@ -526,6 +532,7 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
                             "Data_DOU": dou,
                             "Republicacao": retificada,
                             "Lotacao": unidade,
+                            "Revoga": revoga,
                         }
                     )
                     driver.close()
