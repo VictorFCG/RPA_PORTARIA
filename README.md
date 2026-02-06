@@ -32,13 +32,12 @@ Utilitário para normalizar dados extraídos:
 
 ## 🚀 Como Usar
 
-### Pré-requisitos
-
-```bash
-# Python 3.8+
-# Dependências necessárias:
-pip install selenium pillow webdriver-manager pandas unidecode
-```
+**Pré-requisitos:**
+- Python 3.8+
+- selenium 
+- pillow 
+- webdriver-manager 
+- pandas
 
 **Dependências do Sistema:**
 - Google Chrome instalado (o script baixa o chromedriver automaticamente)
