@@ -24,6 +24,62 @@ import time
 import re
 import os
 
+def diver_init():
+    try:
+        PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chromedriver.exe")
+        service = Service(PATH)
+
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--disable-software-rasterizer")
+        chrome_options.add_argument("--allow-insecure-localhost")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        download_dir = os.getcwd()
+
+        chrome_options.add_argument("--ignore-certificate-errors")
+        chrome_options.add_argument("--disable-popup-blocking")
+        prefs = {
+            "download.default_directory": download_dir,
+            "download.prompt_for_download": False,
+            "download.directory_upgrade": True,
+            "safebrowsing.enabled": True,
+        }
+        chrome_options.add_experimental_option("prefs", prefs)
+        driver = webdriver.Chrome(
+            service=Service(ChromeDriverManager().install()), options=chrome_options
+        )
+        driver.get("https://sei.utfpr.edu.br/")
+    except Exception as e:
+        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        error_message = str(e) + "\n" + traceback.format_exc()
+    return driver
+
+def login(driver, usuario, senha):
+    try:
+        time.sleep(1)
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "pwdSenha"))
+        ).send_keys(senha)
+        time.sleep(1)
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "txtUsuario"))
+        ).send_keys(usuario)
+        time.sleep(1)
+        WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.ID, "sbmAcessar"))
+        ).click()
+    except Exception as e:
+        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        error_message = str(e) + "\n" + traceback.format_exc()
+        file_name = f"erro_{current_time}.txt"
+        with open(file_name, "w") as file:
+            file.write(error_message)
+        print(f"Error saved to {file_name}")
+        exit(1)
+
 def modal_handle(driver, results, nome, unidade):
     #faltantes - inicialização temporária
     detalhes = numero = boletimData = Portaria = Servidor = dou = retificada = "N/A"
@@ -236,7 +292,7 @@ def transform_url(url):
     return transformed_url
 
 
-def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
+def exec(numer, nome, dataInicio, dataFinal, unidade, driver):
     nome = (
         "Portarias_"
         + unidade
@@ -247,47 +303,8 @@ def exec(numer, nome, dataInicio, dataFinal, usuario, senha, unidade):
         + ".csv"
     )
     numero = str(numer)
-    PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chromedriver.exe")
-    service = Service(PATH)
-
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--disable-software-rasterizer")
-    chrome_options.add_argument("--allow-insecure-localhost")
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-popup-blocking")
-    download_dir = os.getcwd()
-
-    chrome_options.add_argument("--ignore-certificate-errors")
-    chrome_options.add_argument("--disable-popup-blocking")
-    prefs = {
-        "download.default_directory": download_dir,
-        "download.prompt_for_download": False,
-        "download.directory_upgrade": True,
-        "safebrowsing.enabled": True,
-    }
+    
     try:
-        chrome_options.add_experimental_option("prefs", prefs)
-        driver = webdriver.Chrome(
-            service=Service(ChromeDriverManager().install()), options=chrome_options
-        )
-        driver.get("https://sei.utfpr.edu.br/")
-
-        time.sleep(1)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "pwdSenha"))
-        ).send_keys(senha)
-        time.sleep(1)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "txtUsuario"))
-        ).send_keys(usuario)
-        time.sleep(1)
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "sbmAcessar"))
-        ).click()
-
         WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, "//img[@title='Pesquisa Rápida']"))
         ).click()
@@ -604,18 +621,45 @@ def executar(
         )
         return
 
+    driver = diver_init()
+    login(driver, usuario, senha)
+
     if numer == "GABIR":
         threading.Thread(
             target=exec,
-            args=(10, "GABIR", start_date, final_date, usuario, senha, numer),
+            args=(10, "GABIR", start_date, final_date, numer, driver),
             daemon=True,
         ).start()
-    if numer.upper().startswith("GADIR"):
+    elif numer.upper().startswith("GADIR"):
         threading.Thread(
             target=exec,
-            args=(290, "GADIR", start_date, final_date, usuario, senha, numer),
+            args=(290, "GADIR", start_date, final_date, numer, driver),
             daemon=True,
         ).start()
+    elif numer == "TODOS":
+        units = [
+        "TODOS",
+        "GABIR",
+        "GADIR-AP",
+        "GADIR-CM",
+        "GADIR-CP",
+        "GADIR-CT",
+        "GADIR-DV",
+        "GADIR-FB",
+        "GADIR-GP",
+        "GADIR-LD",
+        "GADIR-MD",
+        "GADIR-PB",
+        "GADIR-PG",
+        "GADIR-RT",
+        "GADIR-SH",
+        "GADIR-TD",
+        ]
+        for unit in units:
+            if unit == "GABIR":
+                exec(10, "GABIR", start_date, final_date, unit, driver)
+            elif unit.upper().startswith("GADIR"):
+                exec(290, "GADIR", start_date, final_date, unit, driver)
 
 
 def fechar(root):
@@ -753,8 +797,9 @@ def interface():
     tk.Label(
         root, text="Selecione a Unidade Emissora da Portaria:", font=("Arial", 14)
     ).grid(row=7, column=0, sticky="w", padx=10, pady=10)
-    option_var = tk.StringVar(value="GABIR")
+    option_var = tk.StringVar(value="TODOS")
     units = [
+        "TODOS",
         "GABIR",
         "GADIR-AP",
         "GADIR-CM",
