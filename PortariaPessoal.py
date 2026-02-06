@@ -190,6 +190,10 @@ def modal_handle(driver, results, nome, unidade):
 
     driver.switch_to.default_content()
 
+    WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//img[@title='Fechar janela (ESC)']"))
+        ).click()
+
     #detalhes - tipo de processo
     # 1. Localiza o elemento select pelo XPath fornecido
     elemento_select = driver.find_element(By.XPATH, "/html/body/div[1]/div/div[2]/form/div[13]/div[2]/select")
