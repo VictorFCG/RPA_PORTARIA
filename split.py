@@ -1,23 +1,36 @@
 import pandas as pd
 from tkinter import Tk, filedialog
 
-def spit_csv(filename):
-    df = pd.read_csv(filename)
+def spit_csv(filenames):
+    # Lista para armazenar os DataFrames de cada arquivo
+    lista_df = []
 
-    df["Servidor"] = df["Servidor"].str.split(", ")
-    df = df.explode("Servidor")
+    for arquivo in filenames:
+        df_temp = pd.read_csv(arquivo)
+        lista_df.append(df_temp)
 
-    df["Servidor"] = df["Servidor"].str.strip()
+    # Junta todos os arquivos em um único DataFrame
+    # O concat ignora os cabeçalhos internos e mantém apenas o primeiro
+    df = pd.concat(lista_df, ignore_index=True)
 
-    df.to_csv("saida.csv", index=False)
+    # --- Mesma operação que você já fazia ---
+    if "Servidor" in df.columns:
+        df["Servidor"] = df["Servidor"].astype(str).str.split(", ")
+        df = df.explode("Servidor")
+        df["Servidor"] = df["Servidor"].str.strip().str[:7]
+    # ----------------------------------------
+
+    # Salva o resultado consolidado
+    df.to_csv("saida_consolidada.csv", index=False, encoding='utf-8-sig')
+    print(f"Sucesso! {len(filenames)} arquivos processados em 'saida_consolidada.csv'")
 
 
 if __name__ == "__main__":
     Tk().withdraw()
 
     # Abre o Explorer para selecionar o arquivo
-    arquivo_entrada = filedialog.askopenfilename(
-        title="Selecione o arquivo CSV",
+    arquivo_entrada = filedialog.askopenfilenames(
+        title="Selecione o(s) arquivo(s) CSV",
         filetypes=[("Arquivos CSV", "*.csv")]
     )
 
