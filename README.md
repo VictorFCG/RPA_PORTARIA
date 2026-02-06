@@ -106,8 +106,6 @@ Descricao_Portaria, Data_DOU, Republicacao, Lotacao, Revoga
 | Lotacao | GABIR |
 | Revoga | Não |
 
-## 🔍 Detalhes Técnicos
-
 Os arquivos gerados incluem:
 - `Portarias_[UNIDADE]_[DATA_INICIAL]_[DATA_FINAL].csv` - Resultado principal
 - `erro_[TIMESTAMP].txt` - Logs de erro (se houver)
